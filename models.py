@@ -57,7 +57,11 @@ class ApprovalStep(Base):
     __tablename__ = "approval_steps"
     id = Column(Integer, primary_key=True, index=True)
     rule_id = Column(Integer, ForeignKey("approval_rules.id"))
-    approver_id = Column(Integer, ForeignKey("users.id"))
+    
+    # --- THIS IS THE FIX ---
+    # If the user linked here is deleted, this approval step will be automatically deleted too.
+    approver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE")) 
+    
     step_number = Column(Integer)
     rule = relationship("ApprovalRule", back_populates="steps")
     approver = relationship("User")
@@ -69,3 +73,4 @@ class ActiveApproval(Base):
     current_step_id = Column(Integer, ForeignKey("approval_steps.id"))
     expense = relationship("Expense")
     current_step = relationship("ApprovalStep")
+
