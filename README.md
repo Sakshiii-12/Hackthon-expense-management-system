@@ -1,6 +1,10 @@
 # Expense Management System
 **Submission for the Odoo x Amalthea IIT Gandhinagar Hackathon 2025**
 
+**Team Name:** Lakadbagghe
+
+**Reviewer:** Aman Patel
+
 This project provides a robust, scalable, and modern solution to the inefficiencies and lack of transparency in traditional expense reimbursement processes. It replaces manual workflows with a dynamic, rule-based web application featuring an administrator-configurable approval engine.
 
 
@@ -104,56 +108,50 @@ This project consists of a Python backend and a JavaScript frontend. You will ne
 1. Navigate into the `expense-backend-py` directory.
 2. Create and activate a Python virtual environment:
 
-   ```bash
-   # For Windows
-   python -m venv venv
-   venv\Scripts\activate
+```bash
+# For Windows
+python -m venv venv
+venv\Scripts\activate
 
-   # For macOS/Linux
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+# For macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
 3. Install the required Python packages:
 
-   ```bash
-   pip install "fastapi[all]" sqlalchemy
-   ```
+```bash
+pip install "fastapi[all]" sqlalchemy
+```
+
 4. Run the seed script to create and populate a fresh database. This script will automatically reset the database on every run.
 
-   ```bash
-   python seed.py
-   ```
+```bash
+python seed.py
+```
+
 5. Start the backend server:
 
-   ```bash
-   uvicorn main:app --reload
-   ```
+```bash
+uvicorn main:app --reload
+```
 
-   The backend will now be running at `http://127.0.0.1:8000`. Keep this terminal open.
+The backend will now be running at `http://127.0.0.1:8000`. Keep this terminal open.
 
 ### Frontend Setup
 
 1. In a **separate terminal** or your file explorer, navigate to the folder containing `login.html` and `dashboard.html`.
 2. **Open the `login.html` file directly in your web browser.**
 
-   * You can do this by double-clicking the file or right-clicking and selecting "Open with..." your preferred browser.
-
 The application is now running. You can log in as different users to test the functionality.
 
 
 ## 6. Future Improvements
 
-1. **OCR for Receipts:**
-   Integrate OCR to extract details like amount, date, and vendor from uploaded receipts.
-
-2. **Live Currency Conversion:**
-   Fetch real-time exchange rates using APIs like *exchangerate-api.com*.
-
-3. **Advanced Conditional Rules:**
-   Support percentage-based or role-specific approval conditions.
-
-4. **Real-Time Notifications:**
-   Implement WebSockets or email services for instant updates on approval status.
+1. **OCR for Receipts:** Integrate OCR to extract details like amount, date, and vendor from uploaded receipts.
+2. **Live Currency Conversion:** Fetch real-time exchange rates using APIs like *exchangerate-api.com*.
+3. **Advanced Conditional Rules:** Support percentage-based or role-specific approval conditions.
+4. **Real-Time Notifications:** Implement WebSockets or email services for instant updates on approval status.
 
 
 ## 7. Contributors
@@ -166,3 +164,8 @@ The application is now running. You can log in as different users to test the fu
 ## 8. Acknowledgments
 
 This project was built as part of the **Odoo x Amalthea Hackathon 2025**, demonstrating modern, configurable enterprise expense management using a dynamic approval logic model.
+
+
+## 9. Video Presentation
+
+https://photos.app.goo.gl/fr8WjHhJkG9dFMhe6
