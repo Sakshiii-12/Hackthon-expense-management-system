@@ -1,0 +1,13 @@
+# Virtual Environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# SQLite Database
+sql_app.db
+*.db
+
+# Log files
+notifications.log
