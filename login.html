@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Expense Management</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f5f7; }
+        .login-card { background-color: #fff; padding: 2rem 3rem; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); text-align: center; }
+        h2 { color: #172b4d; }
+        select, button { width: 100%; padding: 0.75rem; margin-top: 1rem; font-size: 1rem; border-radius: 3px; }
+        button { border: none; cursor: pointer; background-color: #0052cc; color: white; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Login As:</h2>
+        <select id="user-select"><option>Loading users...</option></select>
+        <button onclick="login()">Login</button>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/users');
+                const users = await response.json();
+                const userSelect = document.getElementById('user-select');
+                userSelect.innerHTML = '<option value="">-- Select User --</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.name} (${user.role})`;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) { document.getElementById('user-select').innerHTML = '<option>Could not load users</option>'; }
+        });
+        function login() {
+            const userId = document.getElementById('user-select').value;
+            if (userId) {
+                localStorage.setItem('currentUserId', userId);
+                window.location.href = 'dashboard.html';
+            } else { alert('Please select a user.'); }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Management Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background-color: #f4f5f7; }
+        header { background-color: #fff; padding: 1rem 2rem; border-bottom: 1px solid #dfe1e6; display: flex; justify-content: space-between; align-items: center; }
+        main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        h1, h2, h3, h4 { color: #172b4d; }
+        .card { background-color: #fff; border-radius: 5px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        form .full-width { grid-column: 1 / -1; }
+        form input, form select, form button { padding: 0.75rem; border: 1px solid #ccc; border-radius: 3px; font-size: 1rem; background-color: white; }
+        form button { background-color: #0052cc; color: white; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #dfe1e6; }
+        .history-row:hover { background-color: #f0f0f0; cursor: pointer; }
+        .user-manage-actions, .approval-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+        .user-manage-actions select { padding: 0.4rem; font-size: 0.9rem; }
+        .user-manage-actions button, .approval-actions button { padding: 0.4rem 0.8rem; font-size: 0.9rem; border: none; color: white; cursor: pointer; border-radius: 3px; }
+        .save-btn { background-color: #0052cc; }
+        .delete-btn, .reject-btn { background-color: #dc3545; }
+        .approve-btn { background-color: #28a745; }
+        .status { padding: 0.25rem 0.5rem; border-radius: 10px; font-weight: bold; font-size: 0.8rem; display: inline-block; }
+        .status-PENDING { background-color: #ffc107; color: #333; }
+        .status-APPROVED { background-color: #28a745; color: white; }
+        .status-REJECTED { background-color: #dc3545; color: white; }
+        .rule-header { display: flex; justify-content: space-between; align-items: center; }
+        ol { padding-left: 20px; }
+        #logout-btn { padding: 0.5rem 1rem; background: none; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header><h1>Expense Management</h1><button id="logout-btn" onclick="logout()">Logout</button></header>
+    <main><div id="content-area"><p>Loading...</p></div></main>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
+        const currentUserId = parseInt(localStorage.getItem('currentUserId'), 10);
+        const contentArea = document.getElementById('content-area');
+
+        function logout() { localStorage.removeItem('currentUserId'); window.location.href = 'login.html'; }
+        document.addEventListener('DOMContentLoaded', () => { if (currentUserId) { renderMainView(); } else { contentArea.innerHTML = '<h2>No user logged in. Please <a href="login.html">login</a>.</h2>'; } });
+
+        async function fetchApi(path, options = {}) {
+            options.headers = { ...options.headers, 'x-user-id': currentUserId, 'Content-Type': 'application/json' };
+            const response = await fetch(`${API_URL}${path}`, options);
+            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.detail || 'An API error occurred'); }
+            if (response.status === 204 || options.method === 'DELETE') return { ok: true };
+            return response.json();
+        }
+
+        async function handleCreateUser(event) {
+            event.preventDefault(); const formData = new FormData(event.target);
+            const userData = { name: formData.get('name'), email: formData.get('email'), role: formData.get('role'), manager_id: parseInt(formData.get('manager_id')) || null };
+            try { await fetchApi('/users', { method: 'POST', body: JSON.stringify(userData) }); renderMainView(); } catch (error) { alert(`Failed to create user: ${error.message}`); }
+        }
+        async function handleChangeManager(userId) {
+            const newManagerId = document.getElementById(`manager-select-${userId}`).value ? parseInt(document.getElementById(`manager-select-${userId}`).value, 10) : null;
+            try { await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ manager_id: newManagerId }) }); renderMainView(); } catch (error) { alert(`Failed to update manager: ${error.message}`); }
+        }
+        async function handleDeleteUser(userId, userName) {
+            if (confirm(`Delete "${userName}"? This cannot be undone.`)) {
+                try { await fetchApi(`/users/${userId}`, { method: 'DELETE' }); renderMainView(); } catch (error) { alert(`Failed to delete user: ${error.message}`); }
+            }
+        }
+        async function handleCreateRule(event) {
+            event.preventDefault(); const formData = new FormData(event.target);
+            const name = formData.get('name'); const min_amount = parseFloat(formData.get('min_amount'));
+            await fetchApi(`/rules?name=${encodeURIComponent(name)}&min_amount=${min_amount}`, { method: 'POST' });
+            renderMainView();
+        }
+        async function handleAddStep(ruleId) {
+            const approver_id = parseInt(document.getElementById(`step-user-select-${ruleId}`).value, 10);
+            if (!approver_id) { alert('Please select an approver.'); return; }
+            await fetchApi(`/rules/${ruleId}/steps?approver_id=${approver_id}`, { method: 'POST' });
+            renderMainView();
+        }
+        async function handleDeleteRule(ruleId, ruleName) {
+            if (confirm(`Are you sure you want to delete the rule "${ruleName}"?`)) {
+                try { await fetchApi(`/rules/${ruleId}`, { method: 'DELETE' }); renderMainView(); } catch (error) { alert(`Failed to delete rule: ${error.message}`); }
+            }
+        }
+        async function submitNewExpense(event) {
+            event.preventDefault(); const formData = new FormData(event.target);
+            const expenseData = { amount: parseFloat(formData.get('amount')), currency: formData.get('currency').toUpperCase(), category: formData.get('category'), description: formData.get('description'), date: new Date(formData.get('date')).toISOString() };
+            await fetchApi('/expenses/', { method: 'POST', body: JSON.stringify(expenseData) });
+            renderMainView();
+        }
+        async function handleApproval(expenseId, status) {
+            const comment = document.getElementById(`comment-${expenseId}`).value;
+            await fetchApi(`/approvals/${expenseId}`, { method: 'PUT', body: JSON.stringify({ status: status, comment: comment }) });
+            renderMainView();
+        }
+        async function showHistoryLog(expenseId) {
+            const logs = await fetchApi(`/expenses/${expenseId}/history`);
+            const logText = logs.map(log => `${new Date(log.timestamp).toLocaleString()}: ${log.user_name} ${log.action.toLowerCase()}` + (log.comment ? ` - Comment: "${log.comment}"` : '')).join('\n');
+            alert(`--- Expense History ---\n\n${logText}`);
+        }
+
+        async function renderMainView() {
+            try {
+                const allUsers = await fetchApi('/users');
+                const currentUser = allUsers.find(user => user.id === currentUserId);
+                if (!currentUser) throw new Error('Current user not found.');
+                if (currentUser.role === 'ADMIN') { renderAdminView(allUsers); }
+                else if (currentUser.role === 'MANAGER') { renderManagerView(); }
+                else { renderEmployeeView(); }
+            } catch (error) { contentArea.innerHTML = `<h2>Error: ${error.message}</h2>`; }
+        }
+
+        async function renderAdminView(allUsers) {
+            const [rules, approvals] = await Promise.all([ fetchApi('/rules'), fetchApi('/approvals/pending/') ]);
+            const managers = allUsers.filter(user => user.role === 'MANAGER' || user.role === 'ADMIN');
+            const managerOptions = managers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            const allUserOptions = allUsers.map(u => `<option value="${u.id}">${u.name} (${u.role})</option>`).join('');
+            const userTableRows = allUsers.map(user => {
+                const currentManager = allUsers.find(m => m.id === user.manager_id);
+                const userManagerOptions = managers.map(m => `<option value="${m.id}" ${user.manager_id === m.id ? 'selected' : ''}>${m.name}</option>`).join('');
+                let actionsHtml = 'N/A';
+                if (user.role !== 'ADMIN') {
+                    const managerDropdown = user.role === 'EMPLOYEE' ? `<select id="manager-select-${user.id}"><option value="">None</option>${userManagerOptions}</select><button class="save-btn" onclick="handleChangeManager(${user.id})">Save</button>` : '';
+                    actionsHtml = `<div class="user-manage-actions">${managerDropdown}<button class="delete-btn" onclick="handleDeleteUser(${user.id}, '${user.name}')">Delete</button></div>`;
+                }
+                return `<tr><td>${user.id}</td><td>${user.name}</td><td>${user.email}</td><td>${user.role}</td><td>${currentManager ? currentManager.name : 'None'}</td><td>${actionsHtml}</td></tr>`;
+            }).join('');
+            const rulesHtml = rules.map(rule => `<div class="card"><div class="rule-header"><h4>Rule: ${rule.name} (for amounts > ${rule.min_amount})</h4><button class="delete-btn" onclick="handleDeleteRule(${rule.id}, '${rule.name}')">Delete Rule</button></div><ol>${rule.steps.map(step => `<li>${step.approver.name}</li>`).join('')}</ol><form onsubmit="event.preventDefault(); handleAddStep(${rule.id});" style="grid-template-columns: 1fr auto; align-items: center;"><select id="step-user-select-${rule.id}"><option value="">-- Select next approver --</option>${allUserOptions}</select><button type="submit">Add Step</button></form></div>`).join('');
+            const approvalRows = approvals.map(expense => `<tr><td>${expense.employee.name}</td><td>${expense.description}</td><td>${expense.amount.toFixed(2)} ${expense.currency}</td><td><b>${(expense.amount_in_company_currency || expense.amount).toFixed(2)} INR</b></td><td class="approval-actions"><input type="text" id="comment-${expense.id}" placeholder="Optional comment..."><button class="approve-btn" onclick="handleApproval(${expense.id}, 'APPROVED')">Approve</button><button class="reject-btn" onclick="handleApproval(${expense.id}, 'REJECTED')">Reject</button></td></tr>`).join('') || `<tr><td colspan="5">No pending approvals for you.</td></tr>`;
+            contentArea.innerHTML = `<div class="card"><h2>Admin Panel: User Management</h2><form onsubmit="handleCreateUser(event)"><input type="text" name="name" placeholder="Full Name" required><input type="email" name="email" placeholder="Email Address" required><select name="role" required><option value="EMPLOYEE">Employee</option><option value="MANAGER">Manager</option></select><select name="manager_id"><option value="">Assign a Manager (optional)</option>${managerOptions}</select><button type="submit" class="full-width">Create User</button></form><div style="margin-top:1.5rem;"><h3>All Users</h3><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Reports To</th><th>Actions</th></tr></thead><tbody>${userTableRows}</tbody></table></div></div><div class="card"><h2>Admin Panel: Approval Rules</h2><div class="card"><h4>Create New Rule</h4><form onsubmit="handleCreateRule(event)" style="grid-template-columns: 1fr 1fr auto; align-items: center;"><input name="name" placeholder="Rule Name" required><input name="min_amount" type="number" placeholder="Min Amount" value="0" required><button type="submit">Create Rule</button></form></div>${rulesHtml}</div><div class="card"><h2>Pending Approvals</h2><table><thead><tr><th>Employee</th><th>Description</th><th>Original Amt</th><th>Converted Amt</th><th>Actions</th></tr></thead><tbody>${approvalRows}</tbody></table></div>`;
+        }
+        async function renderManagerView() { const approvals = await fetchApi('/approvals/pending/'); const approvalRows = approvals.map(expense => `<tr><td>${expense.employee.name}</td><td>${expense.description}</td><td>${expense.amount.toFixed(2)} ${expense.currency}</td><td><b>${(expense.amount_in_company_currency || expense.amount).toFixed(2)} INR</b></td><td class="approval-actions"><input type="text" id="comment-${expense.id}" placeholder="Optional comment..."><button class="approve-btn" onclick="handleApproval(${expense.id}, 'APPROVED')">Approve</button><button class="reject-btn" onclick="handleApproval(${expense.id}, 'REJECTED')">Reject</button></td></tr>`).join('') || `<tr><td colspan="5">No pending approvals.</td></tr>`; contentArea.innerHTML = `<div class="card"><h2>Pending Approvals</h2><table><thead><tr><th>Employee</th><th>Description</th><th>Original Amt</th><th>Converted Amt</th><th>Actions</th></tr></thead><tbody>${approvalRows}</tbody></table></div>`; }
+        async function renderEmployeeView() { const history = await fetchApi('/expenses/my-history/'); const historyRows = history.map(expense => `<tr class="history-row" onclick="showHistoryLog(${expense.id})"><td>${new Date(expense.date).toLocaleDateString()}</td><td>${expense.description}</td><td>${expense.amount.toFixed(2)} ${expense.currency}</td><td><span class="status status-${expense.status}">${expense.status}</span></td></tr>`).join(''); contentArea.innerHTML = `<div class="card"><h2>Submit New Expense</h2><form onsubmit="submitNewExpense(event)"><input type="number" name="amount" placeholder="Amount" step="0.01" required><select name="currency" required><option value="" disabled selected>Select Currency...</option><option value="INR">INR</option><option value="USD">USD</option><option value="EUR">EUR</option></select><select name="category" required><option value="" disabled selected>Select Category...</option><option value="Travel">Travel</option><option value="Food">Food</option><option value="Supplies">Supplies</option><option value="Training">Training</option><option value="Other">Other</option></select><input type="text" name="description" placeholder="Description" required class="full-width"><input type="date" id="expense-date" name="date" required><button type="submit" class="full-width">Submit Expense</button></form></div><div class="card"><h2>My Expense History (Click a row to see log)</h2><table><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody>${historyRows}</tbody></table></div>`; document.getElementById("expense-date").setAttribute("max", new Date().toISOString().split("T")[0]); }
+    </script>
+</body>
+</html>
